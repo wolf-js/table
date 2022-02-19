@@ -1,6 +1,8 @@
 import TableRender from 'table-render';
 import { CellStyle, ColHeader, RowHeader } from 'table-render/dist/types';
 import { defaultData, TableData, row, col, cell } from './data';
+import Scroll from './scroll';
+import Scrollbar from './scrollbar';
 
 export default class Table {
   // for render
@@ -22,6 +24,11 @@ export default class Table {
 
   _render: TableRender;
 
+  _scroll: Scroll;
+  // scrollbar
+  _verticalScrollbar: Scrollbar;
+  _horizontalScrollbar: Scrollbar;
+
   constructor(element: HTMLElement | string, width: () => number, height: () => number) {
     this._width = width;
     this._height = height;
@@ -35,6 +42,19 @@ export default class Table {
     this._render = TableRender.create(canvasElement, width(), height());
 
     container.appendChild(canvasElement);
+
+    this._scroll = new Scroll(() => this._data);
+
+    // scrollbar
+    this._verticalScrollbar = new Scrollbar('vertical').change((value) => {
+      this._scroll.y(value);
+      this.render();
+    });
+
+    this._horizontalScrollbar = new Scrollbar('horizontal').change((value) => {
+      this._scroll.x(value);
+      this.render();
+    });
   }
 
   colHeader(v: ColHeader) {
