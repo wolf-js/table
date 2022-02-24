@@ -1,8 +1,20 @@
+import './style.index.less';
 import TableRender from 'table-render';
 import { CellStyle, ColHeader, RowHeader } from 'table-render/dist/types';
-import { defaultData, TableData, row, col, cell } from './data';
+import { defaultData, TableData, row, col, cell, colsWidth, rowsHeight } from './data';
+import Element, { h } from './element';
 import Scroll from './scroll';
 import Scrollbar from './scrollbar';
+
+export type TableOptions = {
+  rowHeight?: number;
+  colWidth?: number;
+  rows?: number;
+  cols?: number;
+  cellStyle?: Partial<CellStyle>;
+  scrollable?: boolean;
+  resizable?: boolean;
+};
 
 export default class Table {
   // for render
@@ -14,47 +26,60 @@ export default class Table {
 
   _height: () => number;
 
-  _container: HTMLElement;
-
-  _scrollable: boolean = false;
-
-  _resizable: boolean = false;
+  _container: Element;
 
   _data: TableData;
 
   _render: TableRender;
 
-  _scroll: Scroll;
   // scrollbar
-  _verticalScrollbar: Scrollbar;
-  _horizontalScrollbar: Scrollbar;
+  _vScrollbar: Scrollbar | null = null;
+  _hScrollbar: Scrollbar | null = null;
 
-  constructor(element: HTMLElement | string, width: () => number, height: () => number) {
+  constructor(
+    element: HTMLElement | string,
+    width: () => number,
+    height: () => number,
+    options?: TableOptions
+  ) {
     this._width = width;
     this._height = height;
     const container: HTMLElement | null =
       typeof element === 'string' ? document.querySelector(element) : element;
     if (container === null) throw new Error('first argument error');
-    this._container = container;
+    this._container = h(container)
+      .css('position', 'relative')
+      .css('height', `${height()}px`)
+      .css('width', `${width()}px`);
     this._data = defaultData();
 
+    // update default data
+    if (options) {
+      if (options.cols) this._data.cols.len = options.cols;
+      if (options.rows) this._data.rows.len = options.rows;
+      if (options.rowHeight) this._data.rowHeight = options.rowHeight;
+      if (options.colWidth) this._data.colWidth = options.colWidth;
+      if (options.cellStyle) Object.assign(this._data.style, options.cellStyle);
+    }
+
     const canvasElement = document.createElement('canvas');
-    this._render = TableRender.create(canvasElement, width(), height());
+    this._render = new TableRender(canvasElement, width(), height());
 
-    container.appendChild(canvasElement);
+    this._container.append(canvasElement);
 
-    this._scroll = new Scroll(() => this._data);
+    if (options?.scrollable) {
+      const scroll = new Scroll(() => this._data);
+      // scrollbar
+      this._vScrollbar = new Scrollbar('vertical').change((direction, value) => {
+        if (scroll.y(direction, value)) this.render();
+      });
 
-    // scrollbar
-    this._verticalScrollbar = new Scrollbar('vertical').change((value) => {
-      this._scroll.y(value);
-      this.render();
-    });
-
-    this._horizontalScrollbar = new Scrollbar('horizontal').change((value) => {
-      this._scroll.x(value);
-      this.render();
-    });
+      this._hScrollbar = new Scrollbar('horizontal').change((direction, value) => {
+        if (scroll.x(direction, value)) this.render();
+      });
+      this._container.append(this._vScrollbar._, this._hScrollbar._);
+      tableResizeScrollbars(this);
+    }
   }
 
   colHeader(v: ColHeader) {
@@ -67,61 +92,24 @@ export default class Table {
     return this;
   }
 
-  // default row height
-  rowHeight(v: number) {
-    this._data.rowHeight = v;
-    return this;
-  }
-
-  // default col width
-  colWidth(v: number) {
-    this._data.colWidth = v;
-    return this;
-  }
-
-  // default len of rows
-  rowsLen(v: number) {
-    this._data.rows.len = v;
-    return this;
-  }
-
-  // default len of cols
-  colsLen(v: number) {
-    this._data.cols.len = v;
-    return this;
-  }
-
-  // default cell style
-  cellStyle(v: Partial<CellStyle>) {
-    Object.assign(this._data.style, v || {});
-    return this;
-  }
-
   data(): TableData;
   data(data: TableData): Table;
   data(data?: any): any {
     if (data) {
       this._data = data;
+      tableResizeScrollbars(this);
       return this;
     } else {
       return this._data;
     }
   }
 
-  scrollable(v: boolean) {
-    this._scrollable = v;
-    return this;
-  }
-
-  resizable(v: boolean) {
-    this._resizable = v;
-    return this;
-  }
-
   render() {
     this._render
       .colHeader(this._colHeader)
       .rowHeader(this._rowHeader)
+      .scrollRows(this._data.scroll[1])
+      .scrollCols(this._data.scroll[0])
       .merges(this._data.merges)
       .freeze(this._data.freeze)
       .styles(this._data.styles)
@@ -132,4 +120,27 @@ export default class Table {
       .cell((r, c) => cell(this._data, r, c))
       .render();
   }
+}
+
+// methods ---- start ----
+
+function tableResizeScrollbars(t: Table) {
+  console.log('content.size: ', rowsHeight(t._data), colsWidth(t._data));
+  if (t._vScrollbar) {
+    t._vScrollbar.resize(t._height(), rowsHeight(t._data) + t._data.rowHeight);
+  }
+  if (t._hScrollbar) {
+    t._hScrollbar.resize(t._width() - 15, colsWidth(t._data));
+  }
+}
+
+// methods ---- end ------
+
+export function createTable(
+  element: HTMLElement | string,
+  width: () => number,
+  height: () => number,
+  options?: TableOptions
+): Table {
+  return new Table(element, width, height, options);
 }

@@ -1,19 +1,22 @@
 const path = require('path');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+
 module.exports = {
   entry: {
     table: './src/index.ts',
   },
   devtool: 'inline-source-map',
+  plugins: [new MiniCssExtractPlugin()],
   module: {
     rules: [
       {
-        test: /\.(ts｜tsx)$/,
-        use: 'ts-loader',
+        test: /\.ts$/,
+        use: 'babel-loader',
         exclude: /node_modules/,
       },
       {
         test: /\.less$/,
-        use: ['css-loader', 'less-loader'],
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'less-loader'],
       },
     ],
   },

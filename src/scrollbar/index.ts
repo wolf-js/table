@@ -1,13 +1,15 @@
 import { stylePrefix } from '../config';
 import Element, { h } from '../element';
 
-export type ScrollbarChanger = ((value: number, event: Event) => void) | null;
+export type ScrollbarChanger = ((direction: '+' | '-', value: number, event: Event) => void) | null;
 
 const typeCssKeys = { vertical: 'height', horizontal: 'width' };
 
 export default class Scrollbar {
-  _el: Element;
-  _contentEl: Element;
+  _: Element;
+  _content: Element;
+
+  _value: number = 0;
 
   _type: 'vertical' | 'horizontal';
 
@@ -15,14 +17,17 @@ export default class Scrollbar {
 
   constructor(type: 'vertical' | 'horizontal') {
     this._type = type;
-    this._contentEl = h('div', 'content');
-    this._el = h('div', `${stylePrefix}-scrollbar ${type}`)
-      .append(this._contentEl)
+    this._content = h('div', 'content');
+    this._ = h('div', `${stylePrefix}-scrollbar ${type}`)
+      .append(this._content)
       .on('scroll.stop', (evt) => {
         const { scrollTop, scrollLeft }: any = evt.target;
         // console.log('scrollTop:', scrollTop);
         if (this._change) {
-          this._change(type === 'vertical' ? scrollTop : scrollLeft, evt);
+          const nvalue = type === 'vertical' ? scrollTop : scrollLeft;
+          const direction = nvalue > this._value ? '+' : '-';
+          this._change(direction, nvalue, evt);
+          this._value = nvalue;
         }
       });
   }
@@ -35,26 +40,27 @@ export default class Scrollbar {
   scroll(): any;
   scroll(value: number): Scrollbar;
   scroll(value?: number): any {
-    const { _el, _type } = this;
+    const { _, _type } = this;
     if (value) {
       if (_type === 'vertical') {
-        _el.scrolly(value);
+        _.scrolly(value);
       } else {
-        _el.scrollx(value);
+        _.scrollx(value);
       }
       return this;
     }
-    return _type === 'vertical' ? _el.scrolly() : _el.scrollx();
+    return _type === 'vertical' ? _.scrolly() : _.scrollx();
   }
 
   // update this size
   resize(value: number, contentValue: number) {
     if (contentValue > value - 1) {
       const cssKey = typeCssKeys[this._type];
-      this._contentEl.css(cssKey, `${contentValue}px`);
-      this._el.css(cssKey, `${value - 15}px`).show();
+      this._content.css(cssKey, `${contentValue}px`);
+      this._.css(cssKey, `${value}px`).show();
     } else {
-      this._el.hide();
+      this._.hide();
     }
+    return this;
   }
 }

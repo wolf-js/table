@@ -14,8 +14,8 @@ export default class Element {
   _: HTMLElement;
   _data = new Map();
 
-  constructor(tag: string, className?: string | string[] | Object) {
-    this._ = document.createElement(tag);
+  constructor(tag: string | HTMLElement, className?: string | string[] | Object) {
+    this._ = tag instanceof Node ? tag : document.createElement(tag);
     if (className) {
       if (typeof className === 'string') {
         this._.className = className;
@@ -126,8 +126,14 @@ export default class Element {
     this._.append(createFragment(...nodes));
     return this;
   }
+
+  remove(...nodes: (Element | Node)[]) {
+    nodes.forEach((node) => {
+      this._.removeChild(node instanceof Element ? node._ : node);
+    });
+  }
 }
 
-export function h(tag: string, className?: string | string[] | Object) {
+export function h(tag: string | HTMLElement, className?: string | string[] | Object) {
   return new Element(tag, className);
 }

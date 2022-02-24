@@ -1,4 +1,3 @@
-import { expr2xy } from 'table-render';
 import { Cell, CellStyle } from 'table-render/dist/types';
 import { sum } from './helper';
 
@@ -33,10 +32,10 @@ export type TableData = {
   cols: DataCols;
   rowHeight: number;
   colWidth: number;
+  scroll: [number, number]; // cols, rows
   style: CellStyle;
   styles?: CellStyle[];
   freeze?: string;
-  scroll?: string;
   merges?: string[];
   cells?: DataCells;
 };
@@ -76,6 +75,7 @@ export function defaultData(): TableData {
     },
     rowHeight: 25,
     colWidth: 100,
+    scroll: [0, 0],
     style: {
       fontName: 'Helvetica',
       fontSize: 10,

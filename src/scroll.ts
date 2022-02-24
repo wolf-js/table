@@ -1,35 +1,33 @@
-import { expr2xy, xy2expr } from 'table-render';
 import { col, row, TableData } from './data';
 
 function scrollTo(
   data: TableData,
+  direction: '+' | '-',
   value: number,
   oldValue: [number, number],
   index: number,
   getValue: (index: number) => number
-): [boolean, number, number] | undefined {
-  if (!data.scroll) return;
-  const indexes = expr2xy(data.scroll);
+): boolean {
   let newValue = oldValue[index];
   let changed = false;
-  if (value > oldValue[index]) {
-    for (let i = indexes[index]; i < data.rows.len; i += 1) {
+  // console.log('value:', value, oldValue[index]);
+  if (direction === '+') {
+    for (let i = data.scroll[index]; i < data.rows.len; i += 1) {
       if (newValue > value) break;
       newValue += getValue(i);
-      indexes[index] = i + 1;
+      data.scroll[index] = i + 1;
       changed = true;
     }
   } else {
-    for (let i = indexes[index]; i > 0; i -= 1) {
+    for (let i = data.scroll[index]; i > 0; i -= 1) {
       if (newValue < value) break;
       newValue -= getValue(i);
-      indexes[index] = i - 1;
+      data.scroll[index] = i - 1;
       changed = true;
     }
   }
-  data.scroll = xy2expr(...indexes);
-  oldValue[index] = value;
-  return [changed, ...indexes];
+  oldValue[index] = newValue;
+  return changed;
 }
 
 function step(
@@ -39,9 +37,7 @@ function step(
   oldValue: [number, number],
   getValue: (index: number) => number
 ): number | undefined {
-  if (!data.scroll) return;
-  const indexes = expr2xy(data.scroll);
-  const start = indexes[index];
+  const start = data.scroll[index];
 
   let end = start + n;
   if (end <= 0) end = 0;
@@ -58,10 +54,9 @@ function step(
       newValue -= getValue(i);
     }
   }
-  indexes[index] = end;
-  data.scroll = xy2expr(...indexes);
+  data.scroll[index] = end;
   oldValue[index] = newValue;
-  return indexes[index];
+  return data.scroll[index];
 }
 
 export default class Scroll {
@@ -73,12 +68,12 @@ export default class Scroll {
     this._data = data;
   }
 
-  x(n: number) {
-    return scrollTo(this._data(), n, this._value, 0, (i) => col(this._data(), i).width);
+  x(direction: '+' | '-', n: number) {
+    return scrollTo(this._data(), direction, n, this._value, 0, (i) => col(this._data(), i).width);
   }
 
-  y(n: number) {
-    return scrollTo(this._data(), n, this._value, 1, (i) => row(this._data(), i).height);
+  y(direction: '+' | '-', n: number) {
+    return scrollTo(this._data(), direction, n, this._value, 1, (i) => row(this._data(), i).height);
   }
 
   stepCol(n: number) {
