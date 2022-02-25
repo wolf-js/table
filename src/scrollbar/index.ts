@@ -11,6 +11,8 @@ export default class Scrollbar {
 
   _value: number = 0;
 
+  _maxValue: number = 0;
+
   _type: 'vertical' | 'horizontal';
 
   _change: ScrollbarChanger = null;
@@ -52,12 +54,18 @@ export default class Scrollbar {
     return _type === 'vertical' ? _.scrolly() : _.scrollx();
   }
 
+  test(value: number): boolean {
+    return value > 0 && value < this._maxValue;
+  }
+
   // update this size
   resize(value: number, contentValue: number) {
     if (contentValue > value - 1) {
       const cssKey = typeCssKeys[this._type];
       this._content.css(cssKey, `${contentValue}px`);
       this._.css(cssKey, `${value}px`).show();
+
+      this._maxValue = contentValue - value;
     } else {
       this._.hide();
     }

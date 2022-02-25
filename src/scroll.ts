@@ -30,6 +30,7 @@ function scrollTo(
   return changed;
 }
 
+/**
 function step(
   data: TableData,
   index: number,
@@ -58,6 +59,7 @@ function step(
   oldValue[index] = newValue;
   return data.scroll[index];
 }
+*/
 
 export default class Scroll {
   // [x, y]
@@ -76,6 +78,7 @@ export default class Scroll {
     return scrollTo(this._data(), direction, n, this._value, 1, (i) => row(this._data(), i).height);
   }
 
+  /**
   stepCol(n: number) {
     return step(this._data(), 0, n, this._value, (i) => col(this._data(), i).width);
   }
@@ -83,4 +86,5 @@ export default class Scroll {
   stepRow(n: number) {
     return step(this._data(), 1, n, this._value, (i) => row(this._data(), i).height);
   }
+  */
 }

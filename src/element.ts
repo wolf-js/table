@@ -40,7 +40,7 @@ export default class Element {
     }
   }
 
-  on(eventName: string, handler: (evt: Event) => void) {
+  on(eventName: string, handler: (evt: any) => void) {
     const [evtName, ...prop] = eventName.split('.');
     this._.addEventListener(evtName, (evt) => {
       handler(evt);

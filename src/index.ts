@@ -63,22 +63,16 @@ export default class Table {
     }
 
     const canvasElement = document.createElement('canvas');
+    const hcanvas = h(canvasElement);
+    this._container.append(canvasElement);
     this._render = new TableRender(canvasElement, width(), height());
 
-    this._container.append(canvasElement);
-
+    // scroll
     if (options?.scrollable) {
-      const scroll = new Scroll(() => this._data);
-      // scrollbar
-      this._vScrollbar = new Scrollbar('vertical').change((direction, value) => {
-        if (scroll.y(direction, value)) this.render();
-      });
-
-      this._hScrollbar = new Scrollbar('horizontal').change((direction, value) => {
-        if (scroll.x(direction, value)) this.render();
-      });
-      this._container.append(this._vScrollbar._, this._hScrollbar._);
-      tableResizeScrollbars(this);
+      // init scrollbars
+      tableInitScrollbars(this);
+      // canvas bind wheel
+      tableCanvasBindWheel(this, hcanvas);
     }
   }
 
@@ -124,8 +118,41 @@ export default class Table {
 
 // methods ---- start ----
 
+function tableInitScrollbars(t: Table) {
+  const scroll = new Scroll(() => t._data);
+  // scrollbar
+  t._vScrollbar = new Scrollbar('vertical').change((direction, value) => {
+    if (scroll.y(direction, value)) t.render();
+  });
+
+  t._hScrollbar = new Scrollbar('horizontal').change((direction, value) => {
+    if (scroll.x(direction, value)) t.render();
+  });
+  t._container.append(t._vScrollbar._, t._hScrollbar._);
+  tableResizeScrollbars(t);
+}
+
+function tableCanvasBindWheel(t: Table, hcanvas: Element) {
+  const delta = [0, 0];
+  hcanvas.on('wheel.prevent', (evt) => {
+    const { deltaX, deltaY } = evt;
+    const { _hScrollbar, _vScrollbar } = t;
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (_hScrollbar && _hScrollbar.test(delta[0] + deltaX)) {
+        delta[0] += deltaX;
+        _hScrollbar.scroll(delta[0]);
+      }
+    } else {
+      if (_vScrollbar && _vScrollbar.test(delta[1] + deltaY)) {
+        delta[1] += deltaY;
+        _vScrollbar?.scroll(delta[1]);
+      }
+    }
+  });
+}
+
 function tableResizeScrollbars(t: Table) {
-  console.log('content.size: ', rowsHeight(t._data), colsWidth(t._data));
+  // console.log('content.size: ', rowsHeight(t._data), colsWidth(t._data));
   if (t._vScrollbar) {
     t._vScrollbar.resize(t._height(), rowsHeight(t._data) + t._data.rowHeight);
   }
