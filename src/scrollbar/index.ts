@@ -34,6 +34,10 @@ export default class Scrollbar {
       });
   }
 
+  get value() {
+    return this._value;
+  }
+
   change(value: ScrollbarChanger) {
     this._change = value;
     return this;
@@ -55,7 +59,7 @@ export default class Scrollbar {
   }
 
   test(value: number): boolean {
-    return value > 0 && value < this._maxValue;
+    return value > 0 && value <= this._maxValue;
   }
 
   // update this size

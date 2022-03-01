@@ -1,8 +1,11 @@
-import { createTable } from './src';
+import WolfTable from './src';
 
-createTable(
+WolfTable.create(
   '#table',
   () => 1200,
   () => 600,
-  { scrollable: true }
+  {
+    scrollable: true,
+    resizable: true,
+  }
 ).render();

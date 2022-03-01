@@ -86,7 +86,7 @@ export default class Element {
   }
 
   hide() {
-    this.css('display', 'hide');
+    this.css('display', 'none');
     return this;
   }
 

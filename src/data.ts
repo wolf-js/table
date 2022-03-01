@@ -42,19 +42,33 @@ export type TableData = {
 
 export function style({ styles }: TableData, index?: number) {
   if (!index) return undefined;
-  return styles ? styles[index] : undefined;
+  return styles?.[index];
 }
 
-export function col({ cols, colWidth }: TableData, index: number) {
-  return (cols && cols[index]) || { width: colWidth };
+export function col(data: TableData, index: number) {
+  return data.cols[index] || { width: data.colWidth };
+}
+
+export function colWidth(data: TableData, index: number, value: number) {
+  if (value !== data.colWidth) {
+    if (data.cols[index]) data.cols[index].width = value;
+    else data.cols[index] = { width: value };
+  }
 }
 
 export function colsWidth(data: TableData) {
   return sum(0, data.cols.len, (i) => col(data, i).width);
 }
 
-export function row({ rows, rowHeight }: TableData, index: number) {
-  return (rows && rows[index]) || { height: rowHeight };
+export function row(data: TableData, index: number) {
+  return data.rows[index] || { height: data.rowHeight };
+}
+
+export function rowHeight(data: TableData, index: number, value: number) {
+  if (value !== data.rowHeight) {
+    if (data.rows[index]) data.rows[index].height = value;
+    else data.rows[index] = { height: value };
+  }
 }
 
 export function rowsHeight(data: TableData) {
