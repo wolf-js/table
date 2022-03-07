@@ -1,7 +1,7 @@
 import { Rect, ViewCell } from 'table-render/dist/types';
 import { stylePrefix } from '../config';
 import Element, { h } from '../element';
-import { mouseMoveup } from '../event';
+import { bind, unbind } from '../event';
 
 export type ResizerType = 'row' | 'col';
 
@@ -58,31 +58,36 @@ function mousedownHandler(resizer: Resizer, evt: any) {
   let distance = 0;
 
   _line.show();
-  mouseMoveup(
-    window,
-    (e) => {
-      if (evt !== null && e.buttons === 1 && _cell) {
-        if (_type === 'row') {
-          distance += e.movementY;
-          if (distance + _cell.height >= _minValue) {
-            _.css('top', `${_cell.y + _cell.height + distance}px`);
-          }
-        } else {
-          distance += e.movementX;
-          if (distance + _cell.width >= _minValue) {
-            _.css('left', `${_cell.x + _cell.width + distance}px`);
-          }
-        }
-      }
-      prevEvent = e;
-    },
-    () => {
-      prevEvent = null;
-      _line.hide();
-      _.hide();
-      if (_cell && distance > 0) {
-        _change(distance, _cell);
+
+  const moveHandler = (e: any) => {
+    if (evt !== null && e.buttons === 1 && _cell) {
+      if (_type === 'row') {
+        distance += e.movementY;
+        if (distance + _cell.height >= _minValue) {
+          _.css('top', `${_cell.y + _cell.height + distance}px`);
+        } else distance = _minValue - _cell.height;
+      } else {
+        distance += e.movementX;
+        if (distance + _cell.width >= _minValue) {
+          _.css('left', `${_cell.x + _cell.width + distance}px`);
+        } else distance = _minValue - _cell.width;
       }
     }
-  );
+    prevEvent = e;
+  };
+
+  const upHandler = () => {
+    unbind(window, 'mousemove', moveHandler);
+    unbind(window, 'mouseup', upHandler);
+    prevEvent = null;
+    _line.hide();
+    _.hide();
+    console.log('distance:', distance);
+    if (_cell && distance != 0) {
+      _change(distance, _cell);
+    }
+  };
+
+  bind(window, 'mousemove', moveHandler);
+  bind(window, 'mouseup', upHandler);
 }
