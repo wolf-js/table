@@ -49,30 +49,50 @@ export function col(data: TableData, index: number) {
   return data.cols[index] || { width: data.colWidth };
 }
 
-export function colWidth(data: TableData, index: number, value: number) {
-  if (value !== data.colWidth) {
-    if (data.cols[index]) data.cols[index].width = value;
-    else data.cols[index] = { width: value };
+export function colWidth(data: TableData, index: number): number;
+export function colWidth(data: TableData, index: number, value: number): void;
+export function colWidth(data: TableData, index: number, value?: number) {
+  if (value) {
+    if (value !== data.colWidth) {
+      const { cols } = data;
+      if (cols[index]) cols[index].width = value;
+      else cols[index] = { width: value };
+    }
+  } else {
+    const c = col(data, index);
+    return c.hide ? 0 : c.width;
   }
 }
 
-export function colsWidth(data: TableData) {
-  return sum(0, data.cols.len, (i) => col(data, i).width);
+export function colsWidth(data: TableData): number;
+export function colsWidth(data: TableData, min: number, max: number): number;
+export function colsWidth(data: TableData, min?: number, max?: number) {
+  return sum(min !== undefined ? min : 0, max !== undefined ? max : data.cols.len, (i) => colWidth(data, i));
 }
 
 export function row(data: TableData, index: number) {
   return data.rows[index] || { height: data.rowHeight };
 }
 
-export function rowHeight(data: TableData, index: number, value: number) {
-  if (value !== data.rowHeight) {
-    if (data.rows[index]) data.rows[index].height = value;
-    else data.rows[index] = { height: value };
+export function rowHeight(data: TableData, index: number): number;
+export function rowHeight(data: TableData, index: number, value: number): void;
+export function rowHeight(data: TableData, index: number, value?: number) {
+  if (value) {
+    if (value !== data.rowHeight) {
+      const { rows } = data;
+      if (rows[index]) rows[index].height = value;
+      else rows[index] = { height: value };
+    }
+  } else {
+    const r = row(data, index);
+    return r.hide ? 0 : r.height;
   }
 }
 
-export function rowsHeight(data: TableData) {
-  return sum(0, data.rows.len, (i) => row(data, i).height);
+export function rowsHeight(data: TableData): number;
+export function rowsHeight(data: TableData, min: number, max: number): number;
+export function rowsHeight(data: TableData, min?: number, max?: number) {
+  return sum(min !== undefined ? min : 0, max !== undefined ? max : data.rows.len, (i) => rowHeight(data, i));
 }
 
 export function cell({ cells }: TableData, rowIndex: number, colIndex: number) {

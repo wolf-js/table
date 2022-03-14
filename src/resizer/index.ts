@@ -1,26 +1,27 @@
-import { Rect, ViewCell } from 'table-render/dist/types';
+import { AreaCell } from 'table-render/dist/types';
 import { stylePrefix } from '../config';
-import Element, { h } from '../element';
+import HElement, { h } from '../element';
 import { bind, unbind } from '../event';
 
 export type ResizerType = 'row' | 'col';
 
 export default class Resizer {
-  _: Element;
-  _hover: Element;
-  _line: Element;
+  _: HElement;
+  _hover: HElement;
+  _line: HElement;
 
   _type: ResizerType;
   _minValue: number;
   _lineLength: () => number;
-  _cell: ViewCell | null = null;
-  _change: (value: number, cell: ViewCell) => void;
+  _cell: AreaCell | null = null;
+  _change: (value: number, cell: AreaCell) => void;
 
   constructor(
     type: ResizerType,
+    target: HElement,
     minValue: number,
     lineLength: () => number,
-    change: (value: number, cell: ViewCell) => void = () => {}
+    change: (value: number, cell: AreaCell) => void = () => {}
   ) {
     this._type = type;
     this._minValue = minValue;
@@ -31,9 +32,11 @@ export default class Resizer {
       (this._hover = h('div', 'hover').on('mousedown.stop', (evt) => mousedownHandler(this, evt))),
       (this._line = h('div', 'line'))
     );
+
+    target.append(this._);
   }
 
-  show(cell: ViewCell) {
+  show(cell: AreaCell) {
     this._cell = cell;
     const { _type } = this;
     const { x, y, width, height } = cell;

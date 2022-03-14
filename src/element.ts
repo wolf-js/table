@@ -1,8 +1,8 @@
-function createFragment(...nodes: (Element | Node | string)[]) {
+function createFragment(...nodes: (HElement | Node | string)[]) {
   const fragment = document.createDocumentFragment();
   nodes.forEach((node) => {
     let nnode: Node;
-    if (node instanceof Element) nnode = node._;
+    if (node instanceof HElement) nnode = node._;
     else if (typeof node === 'string') nnode = document.createTextNode(node);
     else nnode = node;
     fragment.appendChild(nnode);
@@ -10,7 +10,15 @@ function createFragment(...nodes: (Element | Node | string)[]) {
   return fragment;
 }
 
-export default class Element {
+export type CSSAttrs = {
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+  position?: string;
+};
+
+export default class HElement {
   _: HTMLElement;
   _data = new Map();
 
@@ -30,7 +38,7 @@ export default class Element {
   }
 
   data(key: string): any;
-  data(key: string, value: any): Element;
+  data(key: string, value: any): HElement;
   data(key: string, value?: any) {
     if (value) {
       this._data.set(key, value);
@@ -57,7 +65,7 @@ export default class Element {
   }
 
   attr(key: string): string;
-  attr(key: string, value: string): Element;
+  attr(key: string, value: string): HElement;
   attr(key: string, value?: string): any {
     if (value) {
       this._.setAttribute(key, value);
@@ -67,21 +75,30 @@ export default class Element {
   }
 
   css(key: string): string;
-  css(key: string, value: string): Element;
-  css(key: string, value?: string): any {
+  css(props: CSSAttrs): HElement;
+  css(key: string, value: string): HElement;
+  css(key: any, value?: string): any {
     if (value) {
       this._.style.setProperty(key, value);
       return this;
     }
-    return this._.style.getPropertyValue(key);
+    if (typeof key === 'string') {
+      return this._.style.getPropertyValue(key);
+    }
+    Object.keys(key).forEach((k) => {
+      let v: any = key[k];
+      if (typeof v === 'number') v = `${v}px`;
+      this._.style.setProperty(k, v);
+    });
+    return this;
   }
 
   rect() {
     return this._.getBoundingClientRect();
   }
 
-  show() {
-    this.css('display', 'block');
+  show(flag: boolean = true) {
+    this.css('display', flag ? 'block' : 'none');
     return this;
   }
 
@@ -91,7 +108,7 @@ export default class Element {
   }
 
   scrollx(): number;
-  scrollx(value: number): Element;
+  scrollx(value: number): HElement;
   scrollx(value?: number): any {
     const { _ } = this;
     if (value) {
@@ -102,7 +119,7 @@ export default class Element {
   }
 
   scrolly(): number;
-  scrolly(value: number): Element;
+  scrolly(value: number): HElement;
   scrolly(value?: number): any {
     const { _ } = this;
     if (value) {
@@ -112,28 +129,32 @@ export default class Element {
     return _.scrollTop;
   }
 
-  after(...nodes: (Element | Node | string)[]) {
+  after(...nodes: (HElement | Node | string)[]) {
     this._.after(createFragment(...nodes));
     return this;
   }
 
-  before(...nodes: (Element | Node | string)[]) {
+  before(...nodes: (HElement | Node | string)[]) {
     this._.before(createFragment(...nodes));
     return this;
   }
 
-  append(...nodes: (Element | Node | string)[]) {
+  append(...nodes: (HElement | Node | string)[]) {
     this._.append(createFragment(...nodes));
     return this;
   }
 
-  remove(...nodes: (Element | Node)[]) {
+  remove(...nodes: (HElement | Node)[]) {
     nodes.forEach((node) => {
-      this._.removeChild(node instanceof Element ? node._ : node);
+      this._.removeChild(node instanceof HElement ? node._ : node);
     });
+  }
+
+  cloneNode() {
+    return this._.cloneNode(true);
   }
 }
 
 export function h(tag: string | HTMLElement, className?: string | string[] | Object) {
-  return new Element(tag, className);
+  return new HElement(tag, className);
 }

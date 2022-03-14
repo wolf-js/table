@@ -1,11 +1,16 @@
 import './style.index.less';
-import TableRender, { stringAt } from 'table-render';
+import TableRender, { stringAt, Range } from 'table-render';
 import { CellStyle, ColHeader, RowHeader } from 'table-render/dist/types';
 import { defaultData, TableData, row, col, cell, colsWidth, rowsHeight, rowHeight, colWidth } from './data';
-import Element, { h } from './element';
+import HElement, { h } from './element';
 import Scroll from './scroll';
 import Scrollbar from './scrollbar';
 import Resizer from './resizer';
+import { bind, unbind } from './event';
+import Selector from './selector';
+import Areas from './areas';
+import Overlayer from './overlayer';
+import { stylePrefix } from './config';
 
 export type TableOptions = {
   rowHeight?: number;
@@ -19,6 +24,7 @@ export type TableOptions = {
   colHeader?: Partial<ColHeader>;
   scrollable?: boolean;
   resizable?: boolean;
+  selectable?: boolean;
 };
 
 export default class Table {
@@ -47,7 +53,7 @@ export default class Table {
 
   _height: () => number;
 
-  _container: Element;
+  _container: HElement;
 
   _data: TableData;
 
@@ -61,6 +67,9 @@ export default class Table {
   _rowResizer: Resizer | null = null;
   _colResizer: Resizer | null = null;
 
+  _selector: Selector | null = null;
+  _overlayer: Overlayer;
+
   constructor(
     element: HTMLElement | string,
     width: () => number,
@@ -72,10 +81,7 @@ export default class Table {
     const container: HTMLElement | null =
       typeof element === 'string' ? document.querySelector(element) : element;
     if (container === null) throw new Error('first argument error');
-    this._container = h(container)
-      .css('position', 'relative')
-      .css('height', `${height()}px`)
-      .css('width', `${width()}px`);
+    this._container = h(container).css({ position: 'relative', height: height(), width: width() });
     this._data = defaultData();
 
     // update default data
@@ -99,10 +105,7 @@ export default class Table {
     this._container.append(canvasElement);
     this._render = new TableRender(canvasElement, width(), height());
 
-    // canvas bind wheel
-    tableCanvasBindWheel(this, hcanvas);
-    // canvas bind mousemove
-    tableCanvasBindMousemove(this, hcanvas);
+    this._overlayer = new Overlayer(this._container);
 
     // scroll
     if (options?.scrollable) {
@@ -114,6 +117,17 @@ export default class Table {
       // init resizers
       tableInitResizers(this);
     }
+
+    if (options?.selectable) {
+      this._selector = new Selector();
+    }
+
+    // canvas bind wheel
+    tableCanvasBindWheel(this, hcanvas);
+    // canvas bind mousemove
+    tableCanvasBindMousemove(this, hcanvas);
+    // canvas bind mousedown
+    tableCanvasBindMousedown(this, hcanvas);
   }
 
   data(): TableData;
@@ -128,6 +142,16 @@ export default class Table {
     }
   }
 
+  resize() {
+    this._container.css({ height: this._height(), width: this._width() });
+    tableResizeScrollbars(this);
+  }
+
+  freeze(ref: string) {
+    if (ref) this._data.freeze = ref;
+    return this;
+  }
+
   rowHeight(index: number, value: number) {
     rowHeight(this._data, index, value);
     tableResizeScrollbars(this);
@@ -138,6 +162,14 @@ export default class Table {
     colWidth(this._data, index, value);
     tableResizeScrollbars(this);
     return this;
+  }
+
+  colsWidth(min: number, max: number) {
+    return colsWidth(this._data, min, max);
+  }
+
+  rowsHeight(min: number, max: number) {
+    return rowsHeight(this._data, min, max);
   }
 
   render() {
@@ -155,6 +187,19 @@ export default class Table {
       .col((index) => col(this._data, index))
       .cell((r, c) => cell(this._data, r, c))
       .render();
+
+    // viewport
+    const { _render, _overlayer } = this;
+    const { viewport } = _render;
+    if (viewport) {
+      viewport.areas.forEach(({ x, y, width, height }, index) => {
+        _overlayer.area(index, { left: x, top: y, width, height });
+      });
+      viewport.headerAreas.forEach(({ x, y, width, height }, index) => {
+        _overlayer.headerArea(index, { left: x, top: y, width, height });
+      });
+    }
+    tableResetSelector(this);
   }
 
   static create(
@@ -169,17 +214,58 @@ export default class Table {
 
 // methods ---- start ----
 
+function tableResetSelector(t: Table) {
+  const { _selector, _overlayer, _container, _rowHeader, _colHeader } = t;
+  if (_selector) {
+    const { _placement } = _selector;
+    _selector.clearTargets();
+    if (_placement === 'body') {
+      const { viewport } = t._render;
+      if (viewport) {
+        viewport.areas.forEach((area, index) => {
+          let insects = false;
+          _selector.rangeRects((r) => {
+            if (area.range.intersects(r)) {
+              insects = true;
+              return area.rect(r);
+            }
+            return null;
+          });
+          if (insects) {
+            _selector.addTarget(_overlayer.area(index));
+          }
+        });
+      }
+    } else {
+      const x = _rowHeader.width;
+      const y = _colHeader.height;
+      _selector
+        .rangeRects((it) => {
+          const rect = { x, y, width: t._width() - x, height: t._height() - y };
+          if (_placement === 'row-header') {
+            rect.y = y + t.rowsHeight(0, it.startRow);
+            rect.height = t.rowsHeight(it.startRow, it.endRow + 1);
+          } else if (_placement === 'col-header') {
+            rect.x = x + t.colsWidth(0, it.startCol);
+            rect.width = t.colsWidth(it.startCol, it.endCol + 1);
+          }
+          return rect;
+        })
+        .addTarget(_container);
+    }
+  }
+}
+
 function tableInitScrollbars(t: Table) {
   const scroll = new Scroll(() => t._data);
   // scrollbar
-  t._vScrollbar = new Scrollbar('vertical').change((direction, value) => {
+  t._vScrollbar = new Scrollbar('vertical', t._container).change((direction, value) => {
     if (scroll.y(direction, value)) t.render();
   });
 
-  t._hScrollbar = new Scrollbar('horizontal').change((direction, value) => {
+  t._hScrollbar = new Scrollbar('horizontal', t._container).change((direction, value) => {
     if (scroll.x(direction, value)) t.render();
   });
-  t._container.append(t._vScrollbar._, t._hScrollbar._);
   tableResizeScrollbars(t);
 }
 
@@ -196,6 +282,7 @@ function tableResizeScrollbars(t: Table) {
 function tableInitResizers(t: Table) {
   t._rowResizer = new Resizer(
     'row',
+    t._container,
     t._minRowHeight,
     () => t._width(),
     (value, { row, height }) => {
@@ -204,37 +291,82 @@ function tableInitResizers(t: Table) {
   );
   t._colResizer = new Resizer(
     'col',
+    t._container,
     t._minColWidth,
     () => t._height(),
     (value, { col, width }) => {
       t.colWidth(col, width + value).render();
     }
   );
-  t._container.append(t._rowResizer._, t._colResizer._);
 }
 
-function tableCanvasBindMousemove(t: Table, hcanvas: Element) {
+function tableCanvasBindMousedown(t: Table, hcanvas: HElement) {
+  hcanvas.on('mousedown', (evt) => {
+    const { _selector, _render } = t;
+    const { viewport } = _render;
+    if (_selector && viewport) {
+      const { offsetX, offsetY, ctrlKey, metaKey, shiftKey } = evt;
+      // console.log(':::', ctrlKey, metaKey);
+      const vcell = viewport.cellAt(offsetX, offsetY);
+      if (vcell) {
+        const { placement, row, col } = vcell;
+        if (shiftKey) {
+          _selector.unionRange(row, col);
+        } else {
+          _selector.placement(placement).addRange(Range.create(row, col), !(metaKey || ctrlKey));
+        }
+        tableResetSelector(t);
+
+        if (placement !== 'all') {
+          const { left, top } = hcanvas.rect();
+          // console.log('first.select:', select);
+          const moveHandler = (e: any) => {
+            let [x1, y1] = [0, 0];
+            if (e.x > 0) x1 = e.x - left;
+            if (e.y > 0) y1 = e.y - top;
+            if (placement === 'row-header') x1 = 1;
+            if (placement === 'col-header') y1 = 1;
+
+            const c1 = viewport.cellAt(x1, y1);
+            if (c1) {
+              _selector.unionRange(c1.row, c1.col);
+              tableResetSelector(t);
+            }
+          };
+          const upHandler = () => {
+            unbind(window, 'mousemove', moveHandler);
+            unbind(window, 'mouseup', upHandler);
+          };
+          bind(window, 'mousemove', moveHandler);
+          bind(window, 'mouseup', upHandler);
+        }
+      }
+    }
+  });
+}
+
+function tableCanvasBindMousemove(t: Table, hcanvas: HElement) {
   hcanvas.on('mousemove', (evt) => {
     const { _rowResizer, _colResizer, _render } = t;
+    const { viewport } = _render;
     const { buttons, offsetX, offsetY } = evt;
     // press the mouse left button
-    if (buttons === 0) {
+    if (viewport && buttons === 0) {
       const { _rowHeader, _colHeader } = t;
       if (_rowResizer && _rowHeader.width > 0) {
-        // console.log('row-resizer:');
-        if (offsetX < _rowHeader.width) {
-          const cell = _render.cellAt(offsetX, offsetY);
-          if (cell && cell[0] === 'row-header') _rowResizer.show(cell[1]);
+        if (offsetX < _rowHeader.width && offsetY > _colHeader.height) {
+          const cell = viewport.cellAt(offsetX, offsetY);
+          if (cell) _rowResizer.show(cell);
         } else {
           _rowResizer.hide();
         }
       }
       if (_colResizer && _colHeader.height > 0) {
         // console.log('col-resizer:');
-        if (offsetY < _colHeader.height) {
-          const cell = _render.cellAt(offsetX, offsetY);
+        if (offsetY < _colHeader.height && offsetX > _rowHeader.width) {
+          const cell = viewport.cellAt(offsetX, offsetY);
           // console.log('cell::', cell);
-          if (cell && cell[0] === 'col-header') _colResizer.show(cell[1]);
+          if (cell) _colResizer.show(cell);
         } else {
           _colResizer.hide();
         }
@@ -243,7 +375,7 @@ function tableCanvasBindMousemove(t: Table, hcanvas: Element) {
   });
 }
 
-function tableCanvasBindWheel(t: Table, hcanvas: Element) {
+function tableCanvasBindWheel(t: Table, hcanvas: HElement) {
   hcanvas.on('wheel.prevent', (evt) => {
     const { deltaX, deltaY } = evt;
     const { _hScrollbar, _vScrollbar } = t;
@@ -258,7 +390,7 @@ function tableCanvasBindWheel(t: Table, hcanvas: Element) {
       if (_vScrollbar) {
         const nvalue = _vScrollbar.value + deltaY;
         if (_vScrollbar.test(nvalue)) {
-          _vScrollbar?.scroll(nvalue);
+          _vScrollbar.scroll(nvalue);
         }
       }
     }

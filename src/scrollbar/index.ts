@@ -1,13 +1,13 @@
 import { stylePrefix } from '../config';
-import Element, { h } from '../element';
+import HElement, { h } from '../element';
 
 export type ScrollbarChanger = ((direction: '+' | '-', value: number, event: Event) => void) | null;
 
 const typeCssKeys = { vertical: 'height', horizontal: 'width' };
 
 export default class Scrollbar {
-  _: Element;
-  _content: Element;
+  _: HElement;
+  _content: HElement;
 
   _value: number = 0;
 
@@ -17,7 +17,7 @@ export default class Scrollbar {
 
   _change: ScrollbarChanger = null;
 
-  constructor(type: 'vertical' | 'horizontal') {
+  constructor(type: 'vertical' | 'horizontal', target: HElement) {
     this._type = type;
     this._content = h('div', 'content');
     this._ = h('div', `${stylePrefix}-scrollbar ${type}`)
@@ -32,6 +32,8 @@ export default class Scrollbar {
           this._value = nvalue;
         }
       });
+
+    target.append(this._);
   }
 
   get value() {
