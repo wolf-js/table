@@ -22,8 +22,8 @@ export default class HElement {
   _: HTMLElement;
   _data = new Map();
 
-  constructor(tag: string | HTMLElement, className?: string | string[] | Object) {
-    this._ = tag instanceof Node ? tag : document.createElement(tag);
+  constructor(tag: string | Node, className?: string | string[] | Object) {
+    this._ = tag instanceof Node ? <HTMLElement>tag : document.createElement(tag);
     if (className) {
       if (typeof className === 'string') {
         this._.className = className;
@@ -152,6 +152,11 @@ export default class HElement {
 
   cloneNode() {
     return this._.cloneNode(true);
+  }
+
+  get firstChild(): HElement | null {
+    const first = this._.firstChild;
+    return first ? new HElement(first) : null;
   }
 }
 

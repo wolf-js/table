@@ -1,6 +1,6 @@
 @import '../style.base.less';
 
-.@{style-prefix}-overlayer-area {
+.@{style-prefix}-overlayer {
   position: absolute;
   pointer-events: none;
   background: transparent;
@@ -8,4 +8,9 @@
   padding: 0;
   border: none;
   overflow: hidden;
+
+  .overlayer-content {
+    width: 100%;
+    height: 100%;
+  }
 }

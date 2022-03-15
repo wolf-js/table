@@ -30,37 +30,6 @@ function scrollTo(
   return changed;
 }
 
-/**
-function step(
-  data: TableData,
-  index: number,
-  n: number,
-  oldValue: [number, number],
-  getValue: (index: number) => number
-): number | undefined {
-  const start = data.scroll[index];
-
-  let end = start + n;
-  if (end <= 0) end = 0;
-  if (end > data.rows.len) end = data.rows.len;
-
-  let newValue = oldValue[index];
-  if (n > 0) {
-    for (let i = start; i < end; i += 1) {
-      if (i >= data.rows.len) break;
-      newValue += getValue(i);
-    }
-  } else {
-    for (let i = end; i < start; i += 1) {
-      newValue -= getValue(i);
-    }
-  }
-  data.scroll[index] = end;
-  oldValue[index] = newValue;
-  return data.scroll[index];
-}
-*/
-
 export default class Scroll {
   // [x, y]
   _value: [number, number] = [0, 0];
@@ -70,21 +39,21 @@ export default class Scroll {
     this._data = data;
   }
 
-  x(direction: '+' | '-', n: number) {
-    return scrollTo(this._data(), direction, n, this._value, 0, (i) => col(this._data(), i).width);
+  x(): number;
+  x(direction: '+' | '-', n: number): boolean;
+  x(direction?: '+' | '-', n?: number): any {
+    if (direction && n) {
+      return scrollTo(this._data(), direction, n, this._value, 0, (i) => col(this._data(), i).width);
+    }
+    return this._value[0];
   }
 
-  y(direction: '+' | '-', n: number) {
-    return scrollTo(this._data(), direction, n, this._value, 1, (i) => row(this._data(), i).height);
+  y(): number;
+  y(direction: '+' | '-', n: number): boolean;
+  y(direction?: '+' | '-', n?: number) {
+    if (direction && n) {
+      return scrollTo(this._data(), direction, n, this._value, 1, (i) => row(this._data(), i).height);
+    }
+    return this._value[1];
   }
-
-  /**
-  stepCol(n: number) {
-    return step(this._data(), 0, n, this._value, (i) => col(this._data(), i).width);
-  }
-
-  stepRow(n: number) {
-    return step(this._data(), 1, n, this._value, (i) => row(this._data(), i).height);
-  }
-  */
 }

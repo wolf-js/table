@@ -119,7 +119,7 @@ export default class Table {
     }
 
     if (options?.selectable) {
-      this._selector = new Selector();
+      this._selector = new Selector(this._rowHeader.width, this._colHeader.height);
     }
 
     // canvas bind wheel
@@ -199,7 +199,6 @@ export default class Table {
         _overlayer.headerArea(index, { left: x, top: y, width, height });
       });
     }
-    tableResetSelector(this);
   }
 
   static create(
@@ -222,6 +221,7 @@ function tableResetSelector(t: Table) {
     if (_placement === 'body') {
       const { viewport } = t._render;
       if (viewport) {
+        /*
         viewport.areas.forEach((area, index) => {
           let insects = false;
           _selector.rangeRects((r) => {
@@ -234,6 +234,24 @@ function tableResetSelector(t: Table) {
           if (insects) {
             _selector.addTarget(_overlayer.area(index));
           }
+        });
+        */
+        const viewportAreass = [viewport.areas, viewport.headerAreas];
+        const overlayerAreas = [_overlayer._areas, _overlayer._headerAreas];
+        [0, 1].forEach((i) => {
+          viewportAreass[i].forEach((area, index) => {
+            let intersects = false;
+            _selector.rangeRects((r) => {
+              if (area.range.intersects(r)) {
+                intersects = true;
+                return area.rect(r);
+              }
+              return null;
+            }, i === 1);
+            if (intersects) {
+              _selector.addTarget(overlayerAreas[i][index], i === 1);
+            }
+          });
         });
       }
     } else {
@@ -260,11 +278,17 @@ function tableInitScrollbars(t: Table) {
   const scroll = new Scroll(() => t._data);
   // scrollbar
   t._vScrollbar = new Scrollbar('vertical', t._container).change((direction, value) => {
-    if (scroll.y(direction, value)) t.render();
+    if (scroll.y(direction, value)) {
+      t.render();
+      tableResetSelector(t);
+    }
   });
 
   t._hScrollbar = new Scrollbar('horizontal', t._container).change((direction, value) => {
-    if (scroll.x(direction, value)) t.render();
+    if (scroll.x(direction, value)) {
+      t.render();
+      tableResetSelector(t);
+    }
   });
   tableResizeScrollbars(t);
 }
@@ -287,6 +311,7 @@ function tableInitResizers(t: Table) {
     () => t._width(),
     (value, { row, height }) => {
       t.rowHeight(row, height + value).render();
+      tableResetSelector(t);
     }
   );
   t._colResizer = new Resizer(
@@ -296,6 +321,7 @@ function tableInitResizers(t: Table) {
     () => t._height(),
     (value, { col, width }) => {
       t.colWidth(col, width + value).render();
+      tableResetSelector(t);
     }
   );
 }

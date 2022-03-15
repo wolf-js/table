@@ -7,5 +7,8 @@ WolfTable.create(
   {
     scrollable: true,
     resizable: true,
+    selectable: true,
   }
-).render();
+)
+  .freeze('D5')
+  .render();
