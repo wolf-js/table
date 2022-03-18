@@ -1,4 +1,4 @@
-import { AreaCell } from 'table-render/dist/types';
+import { AreaCell } from 'table-render';
 import { stylePrefix } from '../config';
 import HElement, { h } from '../element';
 import { bind, unbind } from '../event';

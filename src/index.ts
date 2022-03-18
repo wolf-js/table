@@ -1,6 +1,5 @@
 import './style.index.less';
-import TableRender, { stringAt, Range } from 'table-render';
-import { CellStyle, ColHeader, RowHeader } from 'table-render/dist/types';
+import TableRender, { stringAt, CellStyle, ColHeader, RowHeader, Rect, Range, Area } from 'table-render';
 import { defaultData, TableData, row, col, cell, colsWidth, rowsHeight, rowHeight, colWidth } from './data';
 import HElement, { h } from './element';
 import Scroll from './scroll';
@@ -8,9 +7,8 @@ import Scrollbar from './scrollbar';
 import Resizer from './resizer';
 import { bind, unbind } from './event';
 import Selector from './selector';
-import Areas from './areas';
 import Overlayer from './overlayer';
-import { stylePrefix } from './config';
+import { stylePrefix, borderWidth } from './config';
 
 export type TableOptions = {
   rowHeight?: number;
@@ -81,7 +79,7 @@ export default class Table {
     const container: HTMLElement | null =
       typeof element === 'string' ? document.querySelector(element) : element;
     if (container === null) throw new Error('first argument error');
-    this._container = h(container).css({ position: 'relative', height: height(), width: width() });
+    this._container = h(container, `${stylePrefix}-container`).css({ height: height(), width: width() });
     this._data = defaultData();
 
     // update default data
@@ -119,7 +117,7 @@ export default class Table {
     }
 
     if (options?.selectable) {
-      this._selector = new Selector(this._rowHeader.width, this._colHeader.height);
+      this._selector = new Selector({ width: this._rowHeader.width, height: this._colHeader.height });
     }
 
     // canvas bind wheel
@@ -173,6 +171,7 @@ export default class Table {
   }
 
   render() {
+    // console.log('scroll:', this._data.scroll);
     this._render
       .colHeader(this._colHeader)
       .rowHeader(this._rowHeader)
@@ -189,7 +188,7 @@ export default class Table {
       .render();
 
     // viewport
-    const { _render, _overlayer } = this;
+    const { _render, _overlayer, _selector } = this;
     const { viewport } = _render;
     if (viewport) {
       viewport.areas.forEach(({ x, y, width, height }, index) => {
@@ -215,61 +214,100 @@ export default class Table {
 
 function tableResetSelector(t: Table) {
   const { _selector, _overlayer, _container, _rowHeader, _colHeader } = t;
-  if (_selector) {
+  const { viewport } = t._render;
+  if (_selector && viewport) {
     const { _placement } = _selector;
     _selector.clearTargets();
-    if (_placement === 'body') {
-      const { viewport } = t._render;
-      if (viewport) {
-        /*
-        viewport.areas.forEach((area, index) => {
-          let insects = false;
-          _selector.rangeRects((r) => {
-            if (area.range.intersects(r)) {
-              insects = true;
-              return area.rect(r);
-            }
-            return null;
-          });
-          if (insects) {
-            _selector.addTarget(_overlayer.area(index));
+
+    const x = _rowHeader.width;
+    const y = _colHeader.height;
+    const width = t._width() - x;
+    const height = t._height() - y;
+
+    const addAreaRects = (
+      intersectsFunc: (r: Range, r1: Range) => boolean,
+      rectFunc: (area: Area, r: Range, areaIndex: number) => Rect
+    ) => {
+      viewport.areas.forEach((area, index) => {
+        let intersects = false;
+        _selector.ranges.forEach((r, i) => {
+          if (intersectsFunc(area.range, r)) {
+            intersects = true;
+            _selector.addAreaRect(i, rectFunc(area, r, index));
           }
         });
-        */
-        const viewportAreass = [viewport.areas, viewport.headerAreas];
-        const overlayerAreas = [_overlayer._areas, _overlayer._headerAreas];
-        [0, 1].forEach((i) => {
-          viewportAreass[i].forEach((area, index) => {
-            let intersects = false;
-            _selector.rangeRects((r) => {
-              if (area.range.intersects(r)) {
-                intersects = true;
-                return area.rect(r);
-              }
-              return null;
-            }, i === 1);
-            if (intersects) {
-              _selector.addTarget(overlayerAreas[i][index], i === 1);
+        if (intersects) _selector.addTarget(_overlayer.areas[index]);
+      });
+    };
+
+    const addHeaderAreaRects = (type: 'row' | 'col', areaIndexes: number[]) => {
+      areaIndexes.forEach((index) => {
+        const area = viewport.headerAreas[index];
+        let intersects = false;
+        (type === 'row' ? _selector.rowHeaderRanges : _selector.colHeaderRanges).forEach((r) => {
+          if (type === 'row') {
+            if (area.range.intersectsRow(r.startRow, r.endRow)) {
+              intersects = true;
+              _selector.addRowHeaderAreaRect(area.rectRow(r.startRow, r.endRow));
             }
-          });
+          } else {
+            if (area.range.intersectsCol(r.startCol, r.endCol)) {
+              intersects = true;
+              _selector.addColHeaderAreaRect(area.rectCol(r.startCol, r.endCol));
+            }
+          }
         });
-      }
-    } else {
-      const x = _rowHeader.width;
-      const y = _colHeader.height;
+        if (intersects) _selector.addTarget(_overlayer.headerAreas[index]);
+      });
+    };
+
+    if (_placement === 'all') {
       _selector
-        .rangeRects((it) => {
-          const rect = { x, y, width: t._width() - x, height: t._height() - y };
-          if (_placement === 'row-header') {
-            rect.y = y + t.rowsHeight(0, it.startRow);
-            rect.height = t.rowsHeight(it.startRow, it.endRow + 1);
-          } else if (_placement === 'col-header') {
-            rect.x = x + t.colsWidth(0, it.startCol);
-            rect.width = t.colsWidth(it.startCol, it.endCol + 1);
-          }
-          return rect;
-        })
+        .addAreaRect(0, { x, y, width, height })
+        .addRowHeaderAreaRect({ x: 0, y, width: x, height })
+        .addColHeaderAreaRect({ x, y: 0, width, height: y })
         .addTarget(_container);
+    } else if (_placement === 'row-header') {
+      addAreaRects(
+        (r, r1) => r.intersectsRow(r1.startRow, r1.endRow),
+        (area, r1, areaIndex) => {
+          const rect = area.rectRow(r1.startRow, r1.endRow);
+          // hide overlap border
+          rect.width += borderWidth;
+          if (areaIndex === 0 || areaIndex === 3) rect.x -= borderWidth;
+          return rect;
+        }
+      );
+      addHeaderAreaRects('row', [2, 3]);
+      [0, 1].forEach((index) => {
+        _selector
+          .addColHeaderAreaRect({ x: 0, y: 0, width, height: y })
+          .addTarget(_overlayer.headerAreas[index]);
+      });
+    } else if (_placement === 'col-header') {
+      addAreaRects(
+        (r, r1) => r.intersectsCol(r1.startCol, r1.endCol),
+        (area, r1, areaIndex) => {
+          const rect = area.rectCol(r1.startCol, r1.endCol);
+          // hide overlap border
+          rect.height += borderWidth;
+          if (areaIndex === 2 || areaIndex === 3) rect.y -= borderWidth;
+          return rect;
+        }
+      );
+      addHeaderAreaRects('col', [0, 1]);
+      [2, 3].forEach((index) => {
+        _selector
+          .addRowHeaderAreaRect({ x: 0, y: 0, height, width: x })
+          .addTarget(_overlayer.headerAreas[index]);
+      });
+    } else {
+      addAreaRects(
+        (r, r1) => r.intersects(r1),
+        (area, r1) => area.rect(r1)
+      );
+      addHeaderAreaRects('row', [2, 3]);
+      addHeaderAreaRects('col', [0, 1]);
     }
   }
 }
@@ -332,14 +370,13 @@ function tableCanvasBindMousedown(t: Table, hcanvas: HElement) {
     const { viewport } = _render;
     if (_selector && viewport) {
       const { offsetX, offsetY, ctrlKey, metaKey, shiftKey } = evt;
-      // console.log(':::', ctrlKey, metaKey);
       const vcell = viewport.cellAt(offsetX, offsetY);
       if (vcell) {
         const { placement, row, col } = vcell;
         if (shiftKey) {
           _selector.unionRange(row, col);
         } else {
-          _selector.placement(placement).addRange(Range.create(row, col), !(metaKey || ctrlKey));
+          _selector.placement(placement).addRange(row, col, !(metaKey || ctrlKey));
         }
         tableResetSelector(t);
 

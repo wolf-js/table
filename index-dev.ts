@@ -8,6 +8,7 @@ WolfTable.create(
     scrollable: true,
     resizable: true,
     selectable: true,
+    rows: 10000,
   }
 )
   .freeze('D5')

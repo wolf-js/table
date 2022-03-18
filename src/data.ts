@@ -1,4 +1,4 @@
-import { Cell, CellStyle } from 'table-render/dist/types';
+import { Cell, CellStyle } from 'table-render';
 import { sum } from './helper';
 
 export type DataRow = {
