@@ -85,7 +85,6 @@ function mousedownHandler(resizer: Resizer, evt: any) {
     prevEvent = null;
     _line.hide();
     _.hide();
-    console.log('distance:', distance);
     if (_cell && distance != 0) {
       _change(distance, _cell);
     }

@@ -37,7 +37,7 @@ export default class Selector {
     this.ranges.push(range);
     this._startRange = range;
 
-    updateHeaderRanges(this, range);
+    updateHeaderRanges(this);
     return this;
   }
 
@@ -47,13 +47,13 @@ export default class Selector {
     if (_startRange) {
       const newRange = _startRange.union(range);
       ranges.splice(-1, 1, newRange);
-      updateHeaderRanges(this, newRange);
+      updateHeaderRanges(this);
     }
     return this;
   }
 
   clearRanges() {
-    [this.ranges, this.rowHeaderRanges, this.colHeaderRanges].forEach((it) => (it.length = 0));
+    [this.ranges].forEach((it) => (it.length = 0));
     return this;
   }
 
@@ -127,28 +127,49 @@ export default class Selector {
   }
 }
 
-function updateHeaderRanges(s: Selector, range: Range) {
-  const { startRow, startCol, endRow, endCol } = range;
-
-  const updater = (ranges: Range[], r: Range) => {
-    let merged = false;
-    for (let j = 0; j < ranges.length; j += 1) {
-      const hr = ranges[j];
-      if (hr.intersects(r)) {
-        ranges.splice(j, 1, hr.union(r));
-        merged = true;
-        break;
-      }
+function mergedRanges(
+  ranges: Range[],
+  sort: (a: Range, b: Range) => number,
+  intersects: (a: Range, b: Range) => boolean
+) {
+  ranges.sort(sort);
+  let current = ranges[0];
+  const nRanges = [];
+  if (ranges.length === 1) nRanges.push(current);
+  for (let i = 1; i < ranges.length; i += 1) {
+    const r = ranges[i];
+    if (intersects(current, r)) {
+      current = current.union(r);
+    } else {
+      nRanges.push(current);
+      current = r;
     }
-    if (!merged) {
-      ranges.push(r);
-    }
-  };
+  }
+  if (ranges.length > 1) nRanges.push(current);
+  return nRanges;
+}
 
-  if (startRow > 0 || endRow > 0) {
-    updater(s.rowHeaderRanges, Range.create(startRow, 0, endRow, 0));
+function updateHeaderRanges(s: Selector) {
+  const rowHeaderRanges = [];
+  const colHeaderRanges = [];
+  for (let i = 0; i < s.ranges.length; i += 1) {
+    const { startRow, startCol, endRow, endCol } = s.ranges[i];
+    if (startRow > 0 || endRow > 0) {
+      rowHeaderRanges.push(Range.create(startRow, 0, endRow, 0));
+    }
+    if (startCol > 0 || endCol > 0) {
+      colHeaderRanges.push(Range.create(0, startCol, 0, endCol));
+    }
   }
-  if (startCol > 0 || endCol > 0) {
-    updater(s.colHeaderRanges, Range.create(0, startCol, 0, endCol));
-  }
+
+  s.rowHeaderRanges = mergedRanges(
+    rowHeaderRanges,
+    (a, b) => a.startRow - b.startRow,
+    (a, b) => a.intersectsRow(b.startRow, b.endRow)
+  );
+  s.colHeaderRanges = mergedRanges(
+    colHeaderRanges,
+    (a, b) => a.startCol - b.startCol,
+    (a, b) => a.intersectsCol(b.startCol, b.endCol)
+  );
 }

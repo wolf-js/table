@@ -368,6 +368,7 @@ function tableCanvasBindMousedown(t: Table, hcanvas: HElement) {
   hcanvas.on('mousedown', (evt) => {
     const { _selector, _render } = t;
     const { viewport } = _render;
+    let cache = { row: 0, col: 0 };
     if (_selector && viewport) {
       const { offsetX, offsetY, ctrlKey, metaKey, shiftKey } = evt;
       const vcell = viewport.cellAt(offsetX, offsetY);
@@ -376,13 +377,13 @@ function tableCanvasBindMousedown(t: Table, hcanvas: HElement) {
         if (shiftKey) {
           _selector.unionRange(row, col);
         } else {
+          cache = { row, col };
           _selector.placement(placement).addRange(row, col, !(metaKey || ctrlKey));
         }
         tableResetSelector(t);
 
         if (placement !== 'all') {
           const { left, top } = hcanvas.rect();
-          // console.log('first.select:', select);
           const moveHandler = (e: any) => {
             let [x1, y1] = [0, 0];
             if (e.x > 0) x1 = e.x - left;
@@ -392,8 +393,12 @@ function tableCanvasBindMousedown(t: Table, hcanvas: HElement) {
 
             const c1 = viewport.cellAt(x1, y1);
             if (c1) {
-              _selector.unionRange(c1.row, c1.col);
-              tableResetSelector(t);
+              const { row, col } = c1;
+              if (row != cache.row || col !== cache.col) {
+                _selector.unionRange(row, col);
+                tableResetSelector(t);
+                cache = { row, col };
+              }
             }
           };
           const upHandler = () => {
