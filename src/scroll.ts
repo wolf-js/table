@@ -42,7 +42,7 @@ export default class Scroll {
   x(): number;
   x(direction: '+' | '-', n: number): boolean;
   x(direction?: '+' | '-', n?: number): any {
-    if (direction && n) {
+    if (direction && n !== undefined) {
       return scrollTo(this._data(), direction, n, this._value, 0, (i) => col(this._data(), i).width);
     }
     return this._value[0];
@@ -51,7 +51,7 @@ export default class Scroll {
   y(): number;
   y(direction: '+' | '-', n: number): boolean;
   y(direction?: '+' | '-', n?: number) {
-    if (direction && n) {
+    if (direction && n !== undefined) {
       return scrollTo(this._data(), direction, n, this._value, 1, (i) => row(this._data(), i).height);
     }
     return this._value[1];

@@ -332,12 +332,18 @@ function tableInitScrollbars(t: Table) {
 }
 
 function tableResizeScrollbars(t: Table) {
-  // console.log('content.size: ', rowsHeight(t._data), colsWidth(t._data));
+  const { viewport } = t._render;
+  let [x, y] = [0, 0];
+  if (viewport) {
+    const a2 = viewport.areas[1];
+    x += a2.width;
+    y += a2.height;
+  }
   if (t._vScrollbar) {
-    t._vScrollbar.resize(t._height(), rowsHeight(t._data) + t._colHeader.height);
+    t._vScrollbar.resize(t._height(), rowsHeight(t._data) - y);
   }
   if (t._hScrollbar) {
-    t._hScrollbar.resize(t._width() - 15, colsWidth(t._data) + t._rowHeader.width);
+    t._hScrollbar.resize(t._width() - 15, colsWidth(t._data) - x);
   }
 }
 
