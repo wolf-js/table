@@ -1,4 +1,4 @@
-import { Cell, CellStyle } from 'table-render';
+import { Range, Cell, CellStyle } from 'table-render';
 import { sum } from './helper';
 
 export type DataRow = {
@@ -39,6 +39,34 @@ export type TableData = {
   merges?: string[];
   cells?: DataCells;
 };
+
+// merge
+export function merge(data: TableData, ref: string) {
+  data.merges ||= [];
+  const { merges } = data;
+  if (merges.length <= 0) {
+    merges.push(ref);
+  } else {
+    const range = Range.with(ref);
+    merges.forEach((it, index) => {
+      if (Range.with(it).within(range)) {
+        merges.splice(index, 1);
+      }
+    });
+    merges.push(ref);
+  }
+}
+// unmerge
+export function unmerge({ merges }: TableData, ref: string) {
+  if (merges) {
+    for (let i = 0; i < merges.length; i += 1) {
+      if (merges[i] === ref) {
+        merges.splice(i, 1);
+        return;
+      }
+    }
+  }
+}
 
 export function style({ styles }: TableData, index?: number) {
   if (!index) return undefined;

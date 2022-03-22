@@ -1,6 +1,18 @@
 import './style.index.less';
 import TableRender, { stringAt, CellStyle, ColHeader, RowHeader, Rect, Range, Area } from 'table-render';
-import { defaultData, TableData, row, col, cell, colsWidth, rowsHeight, rowHeight, colWidth } from './data';
+import {
+  defaultData,
+  TableData,
+  row,
+  col,
+  cell,
+  colsWidth,
+  rowsHeight,
+  rowHeight,
+  colWidth,
+  merge,
+  unmerge,
+} from './data';
 import HElement, { h } from './element';
 import Scroll from './scroll';
 import Scrollbar from './scrollbar';
@@ -147,6 +159,34 @@ export default class Table {
 
   freeze(ref: string) {
     if (ref) this._data.freeze = ref;
+    return this;
+  }
+
+  merge(): Table;
+  merge(ref: string): Table;
+  merge(ref?: string) {
+    if (ref) merge(this._data, ref);
+    else {
+      const { _selector } = this;
+      if (_selector) {
+        _selector.ranges.forEach((it) => {
+          merge(this._data, it.toString());
+        });
+      }
+    }
+    return this;
+  }
+
+  unmerge(): Table;
+  unmerge(ref: string): Table;
+  unmerge(ref?: string) {
+    if (ref) unmerge(this._data, ref);
+    else {
+      const { _selector } = this;
+      if (_selector) {
+        _selector.ranges.forEach((it) => unmerge(this._data, it.toString()));
+      }
+    }
     return this;
   }
 
