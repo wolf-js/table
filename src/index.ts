@@ -12,6 +12,8 @@ import {
   colWidth,
   merge,
   unmerge,
+  selectRange,
+  isMerged,
 } from './data';
 import HElement, { h } from './element';
 import Scroll from './scroll';
@@ -129,7 +131,7 @@ export default class Table {
     }
 
     if (options?.selectable) {
-      this._selector = new Selector({ width: this._rowHeader.width, height: this._colHeader.height });
+      this._selector = new Selector(this._data);
     }
 
     // canvas bind wheel
@@ -162,22 +164,35 @@ export default class Table {
     return this;
   }
 
+  isMerged(): boolean;
+  isMerged(ref: string): boolean;
+  isMerged(ref?: string) {
+    if (ref) return isMerged(this._data, ref);
+    else {
+      const { _selector } = this;
+      if (_selector) {
+        return _selector.ranges.every((it) => isMerged(this._data, it.toString()));
+      }
+    }
+    return false;
+  }
+
   merge(): Table;
+  // ref: A1 | A1:B10
   merge(ref: string): Table;
   merge(ref?: string) {
     if (ref) merge(this._data, ref);
     else {
       const { _selector } = this;
       if (_selector) {
-        _selector.ranges.forEach((it) => {
-          merge(this._data, it.toString());
-        });
+        _selector.ranges.forEach((it) => merge(this._data, it.toString()));
       }
     }
     return this;
   }
 
   unmerge(): Table;
+  // ref: A1 | A1:B10
   unmerge(ref: string): Table;
   unmerge(ref?: string) {
     if (ref) unmerge(this._data, ref);
@@ -412,7 +427,7 @@ function tableInitResizers(t: Table) {
 
 function tableCanvasBindMousedown(t: Table, hcanvas: HElement) {
   hcanvas.on('mousedown', (evt) => {
-    const { _selector, _render } = t;
+    const { _selector, _render, _data } = t;
     const { viewport } = _render;
     let cache = { row: 0, col: 0 };
     if (_selector && viewport) {

@@ -1,5 +1,6 @@
 import { Range, Rect } from 'table-render';
 import { stylePrefix, borderWidth } from '../config';
+import { rangeUnoinMerges, TableData } from '../data';
 import HElement, { h } from '../element';
 
 type Placement = 'all' | 'row-header' | 'col-header' | 'body';
@@ -10,7 +11,7 @@ export default class Selector {
 
   _startRange: Range | null = null;
   _placement: Placement = 'body';
-  _header: { width: number; height: number };
+  _data: TableData;
 
   _areas: HElement[] = [];
   _rowHeaderAreas: HElement[] = [];
@@ -21,9 +22,9 @@ export default class Selector {
   _targets: HElement[] = [];
   _targetChildren: Node[][] = [];
 
-  constructor(header: { width: number; height: number }) {
+  constructor(data: TableData) {
     this._corner = h('div', 'corner');
-    this._header = header;
+    this._data = data;
   }
 
   placement(value: Placement) {
@@ -32,7 +33,7 @@ export default class Selector {
   }
 
   addRange(row: number, col: number, clear: boolean = true) {
-    const range = Range.create(row, col);
+    const range = rangeUnoinMerges(this._data, Range.create(row, col));
     if (clear) this.clearRanges();
     this.ranges.push(range);
     this._startRange = range;
@@ -46,7 +47,7 @@ export default class Selector {
     const { ranges, _startRange } = this;
     if (_startRange) {
       const newRange = _startRange.union(range);
-      ranges.splice(-1, 1, newRange);
+      ranges.splice(-1, 1, rangeUnoinMerges(this._data, newRange));
       updateHeaderRanges(this);
     }
     return this;

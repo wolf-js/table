@@ -40,14 +40,27 @@ export type TableData = {
   cells?: DataCells;
 };
 
+// can be merged
+export function isMerged({ merges }: TableData, ref: string) {
+  if (merges) {
+    const range = Range.with(ref);
+    for (let i = 0; i < merges.length; i += 1) {
+      if (Range.with(merges[i]).equals(range)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 // merge
 export function merge(data: TableData, ref: string) {
+  const range = Range.with(ref);
+  if (!range.multiple) return;
   data.merges ||= [];
   const { merges } = data;
   if (merges.length <= 0) {
     merges.push(ref);
   } else {
-    const range = Range.with(ref);
     merges.forEach((it, index) => {
       if (Range.with(it).within(range)) {
         merges.splice(index, 1);
@@ -66,6 +79,18 @@ export function unmerge({ merges }: TableData, ref: string) {
       }
     }
   }
+}
+
+export function rangeUnoinMerges({ merges }: TableData, range: Range) {
+  if (merges) {
+    for (let i = 0; i < merges.length; i += 1) {
+      const r = Range.with(merges[i]);
+      if (r.intersects(range)) {
+        range = r.union(range);
+      }
+    }
+  }
+  return range;
 }
 
 export function style({ styles }: TableData, index?: number) {
