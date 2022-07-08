@@ -12,7 +12,6 @@ import {
   colWidth,
   merge,
   unmerge,
-  selectRange,
   isMerged,
 } from './data';
 import HElement, { h } from './element';
@@ -147,7 +146,6 @@ export default class Table {
   data(data?: any): any {
     if (data) {
       this._data = data;
-      tableResizeScrollbars(this);
       return this;
     } else {
       return this._data;
@@ -156,7 +154,6 @@ export default class Table {
 
   resize() {
     this._container.css({ height: this._height(), width: this._width() });
-    tableResizeScrollbars(this);
   }
 
   freeze(ref: string) {
@@ -207,13 +204,11 @@ export default class Table {
 
   rowHeight(index: number, value: number) {
     rowHeight(this._data, index, value);
-    tableResizeScrollbars(this);
     return this;
   }
 
   colWidth(index: number, value: number) {
     colWidth(this._data, index, value);
-    tableResizeScrollbars(this);
     return this;
   }
 
@@ -243,7 +238,7 @@ export default class Table {
       .render();
 
     // viewport
-    const { _render, _overlayer, _selector } = this;
+    const { _render, _overlayer } = this;
     const { viewport } = _render;
     if (viewport) {
       viewport.areas.forEach(({ x, y, width, height }, index) => {
@@ -252,6 +247,7 @@ export default class Table {
       viewport.headerAreas.forEach(({ x, y, width, height }, index) => {
         _overlayer.headerArea(index, { left: x, top: y, width, height });
       });
+      tableResizeScrollbars(this)
     }
   }
 
@@ -383,22 +379,14 @@ function tableInitScrollbars(t: Table) {
       tableResetSelector(t);
     }
   });
-  tableResizeScrollbars(t);
 }
 
 function tableResizeScrollbars(t: Table) {
-  const { viewport } = t._render;
-  let [x, y] = [0, 0];
-  if (viewport) {
-    const a2 = viewport.areas[1];
-    x += a2.width;
-    y += a2.height;
-  }
   if (t._vScrollbar) {
-    t._vScrollbar.resize(t._height(), rowsHeight(t._data) - y);
+    t._vScrollbar.resize(t._height(), rowsHeight(t._data));
   }
   if (t._hScrollbar) {
-    t._hScrollbar.resize(t._width() - 15, colsWidth(t._data) - x);
+    t._hScrollbar.resize(t._width() - 15, colsWidth(t._data));
   }
 }
 
