@@ -5,7 +5,6 @@ import {
   TableData,
   row,
   col,
-  cell,
   colsWidth,
   rowsHeight,
   rowHeight,
@@ -13,9 +12,11 @@ import {
   merge,
   unmerge,
   isMerged,
+  Scroll,
+  Cells,
+  FormulaFunc
 } from './data';
 import HElement, { h } from './element';
-import Scroll from './scroll';
 import Scrollbar from './scrollbar';
 import Resizer from './resizer';
 import { bind, unbind } from './event';
@@ -69,6 +70,10 @@ export default class Table {
   _data: TableData;
 
   _render: TableRender;
+
+  _cells = new Cells();
+
+  _formula: FormulaFunc = (v) => v;
 
   // scrollbar
   _vScrollbar: Scrollbar | null = null;
@@ -142,10 +147,11 @@ export default class Table {
   }
 
   data(): TableData;
-  data(data: TableData): Table;
+  data(data: Partial<TableData>): Table;
   data(data?: any): any {
     if (data) {
-      this._data = data;
+      Object.assign(this._data, data);
+      this._cells.load(this._data);
       return this;
     } else {
       return this._data;
@@ -220,6 +226,11 @@ export default class Table {
     return rowsHeight(this._data, min, max);
   }
 
+  formula(v: FormulaFunc): Table {
+    this._formula = v;
+    return this;
+  }
+
   render() {
     // console.log('scroll:', this._data.scroll);
     this._render
@@ -234,7 +245,9 @@ export default class Table {
       .cols(this._data.cols.len)
       .row((index) => row(this._data, index))
       .col((index) => col(this._data, index))
-      .cell((r, c) => cell(this._data, r, c))
+      .cell((r, c) => {
+        return this._cells.cell(r, c, this._formula)
+      })
       .render();
 
     // viewport

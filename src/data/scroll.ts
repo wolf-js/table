@@ -1,4 +1,4 @@
-import { col, row, TableData } from './data';
+import { col, row, TableData } from '.';
 
 function scrollTo(
   data: TableData,

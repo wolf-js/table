@@ -1,5 +1,7 @@
 import { Range, Cell, CellStyle } from 'table-render';
-import { sum } from './helper';
+import { sum } from '../helper';
+import Cells from './cells';
+import Scroll from './scroll';
 
 export type DataRow = {
   height: number;
@@ -21,11 +23,8 @@ export type DataCols = {
   [key: number]: DataCol;
 };
 
-export type DataCells = {
-  [key: number]: {
-    [key: number]: Cell;
-  };
-};
+export type DataCell = Cell;
+export type DataIndexCell = [number, number, DataCell]
 
 export type TableData = {
   rows: DataRows;
@@ -37,8 +36,10 @@ export type TableData = {
   styles?: CellStyle[];
   freeze?: string;
   merges?: string[];
-  cells?: DataCells;
+  cells?: DataIndexCell[];
 };
+
+export type FormulaFunc = (formula: string) => string | number;
 
 // can be merged
 export function isMerged({ merges }: TableData, ref: string) {
@@ -175,6 +176,7 @@ export function rowsHeight(data: TableData, min?: number, max?: number) {
 export function cell({ cells }: TableData, rowIndex: number, colIndex: number) {
   return cells ? cells[rowIndex][colIndex] : undefined;
 }
+/* data cell end */
 
 export function defaultData(): TableData {
   return {
@@ -202,3 +204,9 @@ export function defaultData(): TableData {
     },
   };
 }
+
+export {
+  Scroll,
+  Cells
+}
+
