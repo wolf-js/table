@@ -15,6 +15,11 @@ WolfTable.create(
   .merge('F10:G11')
   .merge('I10:K11')
   .data({
-    cells: [[0, 0, 'abc'], [1, 1, 100], [2, 6, { value: 'formua' }], [4, 8, { value: '', formula: '=sum(A1:A10)' }]]
+    cells: [
+      [0, 0, 'abc'],
+      [1, 1, 100],
+      [2, 6, { value: 'formua' }],
+      [9, 5, { value: '', formula: '=sum(A1:A10)' }],
+    ],
   })
   .render();

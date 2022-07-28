@@ -14,7 +14,7 @@ import {
   isMerged,
   Scroll,
   Cells,
-  FormulaFunc
+  FormulaFunc,
 } from './data';
 import HElement, { h } from './element';
 import Scrollbar from './scrollbar';
@@ -72,8 +72,6 @@ export default class Table {
   _render: TableRender;
 
   _cells = new Cells();
-
-  _formula: FormulaFunc = (v) => v;
 
   // scrollbar
   _vScrollbar: Scrollbar | null = null;
@@ -227,7 +225,7 @@ export default class Table {
   }
 
   formula(v: FormulaFunc): Table {
-    this._formula = v;
+    this._cells.formula(v);
     return this;
   }
 
@@ -246,7 +244,7 @@ export default class Table {
       .row((index) => row(this._data, index))
       .col((index) => col(this._data, index))
       .cell((r, c) => {
-        return this._cells.cell(r, c, this._formula)
+        return this._cells.cell(r, c);
       })
       .render();
 
@@ -260,7 +258,7 @@ export default class Table {
       viewport.headerAreas.forEach(({ x, y, width, height }, index) => {
         _overlayer.headerArea(index, { left: x, top: y, width, height });
       });
-      tableResizeScrollbars(this)
+      tableResizeScrollbars(this);
     }
   }
 
